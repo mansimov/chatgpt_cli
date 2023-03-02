@@ -1,0 +1,94 @@
+#!/bin/bash
+
+echo ""
+echo ""
+echo " ██████ ██   ██  █████  ████████  ██████  ██████  ████████ "
+echo "██      ██   ██ ██   ██    ██    ██       ██   ██    ██    "
+echo "██      ███████ ███████    ██    ██   ███ ██████     ██    "
+echo "██      ██   ██ ██   ██    ██    ██    ██ ██         ██    "
+echo " ██████ ██   ██ ██   ██    ██     ██████  ██         ██    "
+echo ""
+echo ""
+echo "Source code: https://github.com/mansimov/chatgpt_cli"
+echo "Press enter without providing any input to exit"
+echo ""
+echo ""
+
+
+# read env variable OPENAI_API_KEY
+OPENAI_API_KEY=${OPENAI_API_KEY}
+# if OPENAI_API_KEY is empty then exit
+if [ -z "$OPENAI_API_KEY" ]
+then
+  echo
+  echo 'Your OPENAI_API_KEY is not set as an environment variable'
+  echo 'Please copy your key from https://platform.openai.com/account/api-keys'
+  echo 'And set it as an environment variable in ~/.bashrc, ~/.zshrc, or other file depending on your shell'
+  echo 'Open a new terminal after you do so'
+  echo
+  exit
+fi
+
+# messages passed to the ChatGPT API
+messages=('{"role": "system", "content": "You are a helpful assistant. Avoid starting sentences with As an AI Language Model. Try to be certain with your answers."}')
+
+# converts the messages bash list into the string
+function messages_list_to_str() {
+    # join them by the , delimeter
+    messages_str=$(printf ",%s" "${messages[@]}")
+    messages_str=${messages_str:1} # remove leading ,
+    #messages_str="[${messages_str}]" # join by [ ]
+    echo "$messages_str"
+}
+
+# create a function call_chatgpt_api
+# input: prompt
+# output: response
+function call_chatgpt_api() {
+    user_input="$@"
+    # add user message to the messages array
+    messages+=('{"role": "user", "content": "'"$user_input"'"}')
+
+    response=$(curl https://api.openai.com/v1/chat/completions \
+      -s \
+      -H "Authorization: Bearer $OPENAI_API_KEY" \
+      -H "Content-Type: application/json" \
+      -d '{"model": "gpt-3.5-turbo", "messages": ['"$(messages_list_to_str)"'] }')
+
+    # get output from chatgpt and error message (if exists)
+    content=$(echo $response | jq '.. |."content"? | select(. != null)')
+    content=`sed -e 's/^"//' -e 's/"$//' <<<"$content"` # remove double quotation at start/end
+    error_msg=$(echo $response | jq '.. |."message"? | select(. != null)')
+
+    # if content is null throw an error
+    if [ -z "$content" ]
+    then
+      if [ -z "$error_msg" ]
+      then
+        echo 'Something wrong with your API Key or request'
+      else
+        echo $error_msg
+      fi
+      echo
+      exit
+    fi
+
+    # otherwise print output from ChatGPT
+    echo -e 'ChatGPT:' $content
+    echo
+
+    # add assistant message to the message array
+    messages+=('{"role": "assistant", "content": "'"$content"'"}')
+}
+
+# call read and echo until user_input is empty
+while [ true ]
+do
+    read -p 'User: ' user_input
+    echo
+    if [ "$user_input" = "" ]
+    then
+        break
+    fi
+    call_chatgpt_api $user_input
+done
