@@ -86,9 +86,7 @@ while [ true ]
 do
     read -p 'User: ' user_input
     echo
-    if [ "$user_input" = "" ]
-    then
-        break
+    if ! [ "$user_input" = "" ]
+        call_chatgpt_api $user_input
     fi
-    call_chatgpt_api $user_input
 done
