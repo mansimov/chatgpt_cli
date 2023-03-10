@@ -10,7 +10,6 @@ echo " ██████ ██   ██ ██   ██    ██     ██�
 echo ""
 echo ""
 echo "Source code: https://github.com/mansimov/chatgpt_cli"
-echo "Press enter without providing any input to exit"
 echo ""
 echo ""
 
@@ -86,9 +85,8 @@ while [ true ]
 do
     read -p 'User: ' user_input
     echo
-    if [ "$user_input" = "" ]
+    if ! [ "$user_input" = "" ]
     then
-        break
+        call_chatgpt_api $user_input
     fi
-    call_chatgpt_api $user_input
 done
